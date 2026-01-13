@@ -101,18 +101,30 @@ export const useProviderBookings = () => {
             base_price,
             icon,
             category:service_categories(name, slug)
-          ),
-          customer:profiles!bookings_customer_id_fkey(
-            full_name,
-            phone,
-            email
           )
         `)
         .eq("provider_id", user!.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as Booking[];
+      
+      // Fetch customer profiles separately due to foreign key naming
+      const bookingsWithCustomers = await Promise.all(
+        (data || []).map(async (booking) => {
+          const { data: customerData } = await supabase
+            .from("profiles")
+            .select("full_name, phone, email")
+            .eq("user_id", booking.customer_id)
+            .maybeSingle();
+          
+          return {
+            ...booking,
+            customer: customerData || undefined,
+          };
+        })
+      );
+      
+      return bookingsWithCustomers as Booking[];
     },
     enabled: !!user,
   });
