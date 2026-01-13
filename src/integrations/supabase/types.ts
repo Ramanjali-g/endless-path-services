@@ -452,11 +452,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_payment_order: {
+        Args: {
+          _amount: number
+          _booking_id: string
+          _currency?: string
+          _razorpay_order_id: string
+        }
+        Returns: string
+      }
+      fail_payment: {
+        Args: { _razorpay_order_id: string; _reason?: string }
+        Returns: boolean
+      }
       generate_booking_number: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
+        }
+        Returns: boolean
+      }
+      verify_payment: {
+        Args: {
+          _razorpay_order_id: string
+          _razorpay_payment_id: string
+          _razorpay_signature: string
         }
         Returns: boolean
       }
