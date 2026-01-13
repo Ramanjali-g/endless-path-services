@@ -21,11 +21,18 @@ import {
   ArrowLeft,
   Loader2,
   CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 
 const timeSlots = [
   "09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00"
 ];
+
+// Validation constants
+const MAX_ADDRESS_LENGTH = 500;
+const MAX_CITY_LENGTH = 100;
+const MAX_NOTES_LENGTH = 1000;
+const PINCODE_REGEX = /^[0-9]{6}$/;
 
 const BookService = () => {
   const { serviceId } = useParams();
@@ -39,20 +46,52 @@ const BookService = () => {
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
   const [notes, setNotes] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!date) {
+      newErrors.date = "Please select a date";
+    }
+
+    if (!address.trim()) {
+      newErrors.address = "Address is required";
+    } else if (address.trim().length < 10) {
+      newErrors.address = "Address must be at least 10 characters";
+    } else if (address.length > MAX_ADDRESS_LENGTH) {
+      newErrors.address = `Address must be less than ${MAX_ADDRESS_LENGTH} characters`;
+    }
+
+    if (city && city.length > MAX_CITY_LENGTH) {
+      newErrors.city = `City must be less than ${MAX_CITY_LENGTH} characters`;
+    }
+
+    if (pincode && !PINCODE_REGEX.test(pincode)) {
+      newErrors.pincode = "Pincode must be exactly 6 digits";
+    }
+
+    if (notes && notes.length > MAX_NOTES_LENGTH) {
+      newErrors.notes = `Notes must be less than ${MAX_NOTES_LENGTH} characters`;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!date || !address) return;
+    if (!validateForm()) return;
 
     await createBooking.mutateAsync({
       service_id: serviceId!,
-      scheduled_date: format(date, "yyyy-MM-dd"),
+      scheduled_date: format(date!, "yyyy-MM-dd"),
       scheduled_time: time || undefined,
-      address,
-      city: city || undefined,
+      address: address.trim(),
+      city: city.trim() || undefined,
       pincode: pincode || undefined,
-      notes: notes || undefined,
+      notes: notes.trim() || undefined,
       estimated_price: service?.base_price || undefined,
     });
 
@@ -179,11 +218,27 @@ const BookService = () => {
                 <Label htmlFor="address">Service Address *</Label>
                 <Textarea
                   id="address"
-                  placeholder="Enter your full address"
+                  placeholder="Enter your full address (minimum 10 characters)"
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    if (errors.address) setErrors(prev => ({ ...prev, address: "" }));
+                  }}
+                  maxLength={MAX_ADDRESS_LENGTH}
+                  className={errors.address ? "border-destructive" : ""}
                   required
                 />
+                <div className="flex justify-between text-xs">
+                  {errors.address ? (
+                    <span className="text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.address}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Minimum 10 characters</span>
+                  )}
+                  <span className="text-muted-foreground">{address.length}/{MAX_ADDRESS_LENGTH}</span>
+                </div>
               </div>
 
               {/* City & Pincode */}
@@ -194,8 +249,19 @@ const BookService = () => {
                     id="city"
                     placeholder="Your city"
                     value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    onChange={(e) => {
+                      setCity(e.target.value);
+                      if (errors.city) setErrors(prev => ({ ...prev, city: "" }));
+                    }}
+                    maxLength={MAX_CITY_LENGTH}
+                    className={errors.city ? "border-destructive" : ""}
                   />
+                  {errors.city && (
+                    <span className="text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.city}
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="pincode">Pincode</Label>
@@ -203,9 +269,20 @@ const BookService = () => {
                     id="pincode"
                     placeholder="000000"
                     value={pincode}
-                    onChange={(e) => setPincode(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setPincode(value);
+                      if (errors.pincode) setErrors(prev => ({ ...prev, pincode: "" }));
+                    }}
                     maxLength={6}
+                    className={errors.pincode ? "border-destructive" : ""}
                   />
+                  {errors.pincode && (
+                    <span className="text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.pincode}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -216,8 +293,24 @@ const BookService = () => {
                   id="notes"
                   placeholder="Any specific requirements or instructions..."
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(e) => {
+                    setNotes(e.target.value);
+                    if (errors.notes) setErrors(prev => ({ ...prev, notes: "" }));
+                  }}
+                  maxLength={MAX_NOTES_LENGTH}
+                  className={errors.notes ? "border-destructive" : ""}
                 />
+                <div className="flex justify-between text-xs">
+                  {errors.notes ? (
+                    <span className="text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.notes}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">&nbsp;</span>
+                  )}
+                  <span className="text-muted-foreground">{notes.length}/{MAX_NOTES_LENGTH}</span>
+                </div>
               </div>
 
               {/* Submit */}
